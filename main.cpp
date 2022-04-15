@@ -22,11 +22,17 @@ int main(int argc, char *argv[])
     bool gnu = false;
     if (argc >= 4 && !std::strcmp(argv[3], "gnu")) gnu = true;
 
+    if (fs::exists(argv[1]) == false)
+    {
+        std::cout << "File \"" << argv[1] << "\" does not exist!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     std::ifstream fin(argv[1]);
-    std::ofstream tmp("tmp.c");
+    std::ofstream tmpc("tmp.c");
     std::string spaces("    ");
 
-    tmp << prefix;
+    tmpc << prefix;
 
     char ch;
     while (fin >> ch)
@@ -34,45 +40,62 @@ int main(int argc, char *argv[])
         switch (ch)
         {
             case '>':
-                tmp << spaces << "((ptr == &array[29999]) ? ptr = array : ptr++);\n";
+                tmpc << spaces << "((ptr == &array[29999]) ? ptr = array : ptr++);\n";
                 break;
             case '<':
-                tmp << spaces << "((ptr == array) ? ptr = &array[29999] : ptr--);\n";
+                tmpc << spaces << "((ptr == array) ? ptr = &array[29999] : ptr--);\n";
                 break;
             case '+':
-                tmp << spaces << "++*ptr;\n";
+                tmpc << spaces << "++*ptr;\n";
                 break;
             case '-':
-                tmp << spaces << "--*ptr;\n";
+                tmpc << spaces << "--*ptr;\n";
                 break;
             case '.':
-                tmp << spaces << "putchar(*ptr);\n";
+                tmpc << spaces << "putchar(*ptr);\n";
                 break;
             case ',':
-                tmp << spaces << "*ptr = getchar();\n";
+                tmpc << spaces << "*ptr = getchar();\n";
                 break;
             case '[':
-                tmp << spaces << "while (*ptr)\n";
-                tmp << spaces << "{\n";
+                tmpc << spaces << "while (*ptr)\n";
+                tmpc << spaces << "{\n";
                 spaces += "    ";
                 break;
             case ']':
                 spaces.erase(spaces.length() - 4);
-                tmp << spaces << "}\n";
+                tmpc << spaces << "}\n";
                 break;
         }
     }
 
-    tmp << suffix;
+    tmpc << suffix;
+
+    std::ofstream tmpasm("tmp.asm");
+    tmpasm << kernelasm;
+    tmpasm.close();
 
     fin.close();
-    tmp.close();
+    tmpc.close();
 
     std::string cmd(gnu ? "gcc" : "clang -target x86_64-pc-none-elf");
     cmd += ccargs;
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not compile the kernel!" << std::endl;
+        fs::remove("tmp.asm");
+        fs::remove("tmp.c");
+        return EXIT_FAILURE;
+    }
+
+    cmd = "nasm";
+    cmd += asmargs;
+    if (system(cmd.c_str()))
+    {
+        std::cout << "Unknown error: Could not compile the kernel!" << std::endl;
+        fs::remove("kernel.o");
+        fs::remove("tmp.asm");
+        fs::remove("tmp.c");
         return EXIT_FAILURE;
     }
 
@@ -81,13 +104,17 @@ int main(int argc, char *argv[])
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not link the kernel!" << std::endl;
+        fs::remove("kernelasm.o");
         fs::remove("kernel.o");
+        fs::remove("tmp.asm");
         fs::remove("tmp.c");
         return EXIT_FAILURE;
     }
 
-    fs::remove("tmp.c");
+    fs::remove("kernelasm.o");
     fs::remove("kernel.o");
+    fs::remove("tmp.asm");
+    fs::remove("tmp.c");
     fs::create_directory("iso_root");
 
     cmd = "cp";
