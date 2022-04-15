@@ -603,8 +603,8 @@ memset:
 [GLOBAL memset]
 )";
 
-static const char *ccargs = " -std=gnu17 -ffreestanding -fno-stack-protector -fno-omit-frame-pointer -fno-pic -mabi=sysv -mno-80387 -mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-red-zone -mcmodel=kernel -I. -Ilimine tmp.c -c -o kernel.o";
-static const char *ldargs = " -Tlinker.ld -nostdlib -zmax-page-size=0x1000 -static kernel.o kernelasm.o -o kernel.elf";
-static const char *cpargs = " kernel.elf limine.cfg limine/limine-cd.bin limine/limine-cd-efi.bin limine/limine.sys iso_root/";
-static const char *xorrisoflags = " -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label iso_root/ -o ";
-static const char *asmargs = " -felf64 -o kernelasm.o tmp.asm";
+static const char *ccargs = " -std=gnu17 -ffreestanding -fno-stack-protector -fno-omit-frame-pointer -fno-pic -mabi=sysv -mno-80387 -mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-red-zone -mcmodel=kernel -I. -Ilimine tmp/*.c -c -o tmp/kernel.o";
+static const char *ldargs = " -Tlinker.ld -nostdlib -zmax-page-size=0x1000 -static tmp/kernel.o tmp/kernelasm.o -o tmp/kernel.elf";
+static const char *cpargs = " tmp/kernel.elf limine.cfg limine/limine-cd.bin limine/limine-cd-efi.bin limine/limine.sys tmp/iso_root";
+static const char *xorrisoflags = " -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label tmp/iso_root -o ";
+static const char *asmargs = " -felf64 -o tmp/kernelasm.o tmp/*.asm";

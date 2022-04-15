@@ -7,7 +7,7 @@ MAINCPP = main.cpp
 
 all: limine $(TARGET)
 
-$(TARGET):
+$(TARGET): clean
 	$(CPP) $(CPPFLAGS) $(MAINCPP) -o $(TARGET)
 
 limine:
@@ -15,4 +15,7 @@ limine:
 	$(MAKE) -C limine
 
 clean:
+	rm -f $(TARGET)
+
+distclean:
 	rm -rf limine $(TARGET)

@@ -28,8 +28,10 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    fs::create_directories("tmp");
+
     std::ifstream fin(argv[1]);
-    std::ofstream tmpc("tmp.c");
+    std::ofstream tmpc("tmp/kernel.c");
     std::string spaces("    ");
 
     tmpc << prefix;
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
 
     tmpc << suffix;
 
-    std::ofstream tmpasm("tmp.asm");
+    std::ofstream tmpasm("tmp/kernel.asm");
     tmpasm << kernelasm;
     tmpasm.close();
 
@@ -83,8 +85,7 @@ int main(int argc, char *argv[])
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not compile the kernel!" << std::endl;
-        fs::remove("tmp.asm");
-        fs::remove("tmp.c");
+        fs::remove_all("tmp");
         return EXIT_FAILURE;
     }
 
@@ -93,9 +94,7 @@ int main(int argc, char *argv[])
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not compile the kernel!" << std::endl;
-        fs::remove("kernel.o");
-        fs::remove("tmp.asm");
-        fs::remove("tmp.c");
+        fs::remove_all("tmp");
         return EXIT_FAILURE;
     }
 
@@ -104,28 +103,20 @@ int main(int argc, char *argv[])
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not link the kernel!" << std::endl;
-        fs::remove("kernelasm.o");
-        fs::remove("kernel.o");
-        fs::remove("tmp.asm");
-        fs::remove("tmp.c");
+        fs::remove_all("tmp");
         return EXIT_FAILURE;
     }
 
-    fs::remove("kernelasm.o");
-    fs::remove("kernel.o");
-    fs::remove("tmp.asm");
-    fs::remove("tmp.c");
-    fs::create_directory("iso_root");
+    fs::create_directory("tmp/iso_root");
 
     cmd = "cp";
     cmd += cpargs;
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not create an iso image!" << std::endl;
-        fs::remove("kernel.elf");
+        fs::remove_all("tmp");
         return EXIT_FAILURE;
     }
-    fs::remove("kernel.elf");
 
     cmd = "xorriso";
     cmd += xorrisoflags;
@@ -133,10 +124,11 @@ int main(int argc, char *argv[])
     if (system(cmd.c_str()))
     {
         std::cout << "Unknown error: Could not create an iso image!" << std::endl;
+        fs::remove_all("tmp");
         return EXIT_FAILURE;
     }
 
-    fs::remove_all("iso_root");
+    fs::remove_all("tmp");
 
     return EXIT_SUCCESS;
 }
