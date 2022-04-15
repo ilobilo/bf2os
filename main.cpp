@@ -27,8 +27,13 @@ int main(int argc, char *argv[])
         std::cout << "File \"" << argv[1] << "\" does not exist!" << std::endl;
         return EXIT_FAILURE;
     }
+    if (fs::exists("limine") == false)
+    {
+        std::cout << "limine directory does not exist!" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    fs::create_directories("tmp");
+    fs::create_directory("tmp");
 
     std::ifstream fin(argv[1]);
     std::ofstream tmpc("tmp/kernel.c");
@@ -125,6 +130,16 @@ int main(int argc, char *argv[])
     {
         std::cout << "Unknown error: Could not create an iso image!" << std::endl;
         fs::remove_all("tmp");
+        return EXIT_FAILURE;
+    }
+
+    cmd = "./limine/limine-deploy ";
+    cmd += argv[2];
+    if (system(cmd.c_str()))
+    {
+        std::cout << "Unknown error: Could not deploy limine!" << std::endl;
+        fs::remove_all("tmp");
+        fs::remove(argv[2]);
         return EXIT_FAILURE;
     }
 
