@@ -19,8 +19,10 @@ int main(int argc, char *argv[])
         std::cout << "  bf2os in.bf out.iso gnu" << std::endl;
         return EXIT_FAILURE;
     }
+
     bool gnu = false;
-    if (argc >= 4 && !std::strcmp(argv[3], "gnu")) gnu = true;
+    if (argc >= 4 && !std::strcmp(argv[3], "gnu"))
+        gnu = true;
 
     if (fs::exists(argv[1]) == false)
     {

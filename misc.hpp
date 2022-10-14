@@ -306,35 +306,32 @@ char getchar()
 char get_ascii_char(uint8_t key_code)
 {
     if (!kbd_mod.shift && !kbd_mod.capslock)
-    {
         return kbdus[key_code];
-    }
-    if (kbd_mod.shift && !kbd_mod.capslock)
-    {
+    else if (kbd_mod.shift && !kbd_mod.capslock)
         return kbdus_shft[key_code];
-    }
-    if (!kbd_mod.shift && kbd_mod.capslock)
-    {
+    else if (!kbd_mod.shift && kbd_mod.capslock)
         return kbdus_caps[key_code];
-    }
-    if (kbd_mod.shift && kbd_mod.capslock)
-    {
+    else if (kbd_mod.shift && kbd_mod.capslock)
         return kbdus_capsshft[key_code];
-    }
+
     return 0;
 }
 
 bool wait_in()
 {
     uint64_t timeout = 100000U;
-    while (--timeout) if (!(inb(0x64) & (1 << 1))) return false;
+    while (--timeout)
+        if (!(inb(0x64) & (1 << 1)))
+            return false;
     return true;
 }
 
 bool wait_out()
 {
 	uint64_t timeout = 100000;
-	while (--timeout) if (inb(0x64) & (1 << 0)) return false;
+	while (--timeout)
+        if (inb(0x64) & (1 << 0))
+            return false;
 	return true;
 }
 
@@ -349,9 +346,14 @@ uint8_t kbd_write(uint8_t write)
 void update_leds()
 {
     uint8_t value = 0b000;
-    if (kbd_mod.scrolllock) value |= (1 << 0);
-    if (kbd_mod.numlock) value |= (1 << 1);
-    if (kbd_mod.capslock) value |= (1 << 2);
+
+    if (kbd_mod.scrolllock)
+        value |= (1 << 0);
+    if (kbd_mod.numlock)
+        value |= (1 << 1);
+    if (kbd_mod.capslock)
+        value |= (1 << 2);
+
     kbd_write(0xED);
     kbd_write(value);
 }
@@ -453,20 +455,26 @@ void exception_handler(struct registers_t *regs)
     print("\nSystem Exception!\n");
     print(exception_messages[regs->int_no]);
 
-    for (;;) asm volatile ("cli; hlt");
+    for (;;)
+        asm volatile ("cli; hlt");
 }
 
 void irq_handler(struct registers_t *regs)
 {
-    if (interrupt_handlers[regs->int_no]) interrupt_handlers[regs->int_no](regs);
-    if (regs->int_no >= 40) outb(0xA0, 0x20);
+    if (interrupt_handlers[regs->int_no])
+        interrupt_handlers[regs->int_no](regs);
+
+    if (regs->int_no >= 40)
+        outb(0xA0, 0x20);
     outb(0x20, 0x20);
 }
 
 void int_handler(struct registers_t *regs)
 {
-    if (regs->int_no < 32) exception_handler(regs);
-    else if (regs->int_no >= 32 && regs->int_no < 256) irq_handler(regs);
+    if (regs->int_no < 32)
+        exception_handler(regs);
+    else if (regs->int_no >= 32 && regs->int_no < 256)
+        irq_handler(regs);
 }
 
 void idt_init()
@@ -474,7 +482,8 @@ void idt_init()
     idtr.Limit = sizeof(struct idt_entry) * 256 - 1;
     idtr.Base = (uintptr_t)&idt[0];
 
-    for (size_t i = 0; i < 256; i++) idt_set_descriptor(i, int_table[i]);
+    for (size_t i = 0; i < 256; i++)
+        idt_set_descriptor(i, int_table[i]);
 
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
@@ -506,9 +515,8 @@ void putchar(char c)
 void _start(void)
 {
     if (terminal_request.response == NULL || terminal_request.response->terminal_count < 1)
-    {
-        for (;;) asm volatile ("cli; hlt");
-    }
+        for (;;)
+            asm volatile ("cli; hlt");
 
     idt_init();
     ps2_init();
@@ -519,7 +527,8 @@ void _start(void)
 )";
 
 static const char *suffix = R"(
-    for (;;) asm volatile ("hlt");
+    for (;;)
+        asm volatile ("hlt");
 })";
 
 static const char *kernelasm = R"(; Copyright (C) 2022  ilobilo
