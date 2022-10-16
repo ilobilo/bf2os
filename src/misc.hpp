@@ -2,43 +2,12 @@
 
 #pragma once
 
-static const char *prefix = R"(// Copyright (C) 2022  ilobilo
+static constexpr auto prefix = R"(// Copyright (C) 2022  ilobilo
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <limine.h>
-
-static volatile struct limine_terminal_request terminal_request = {
-    .id = LIMINE_TERMINAL_REQUEST,
-    .revision = 0
-};
-
-size_t strlen(const char *str)
-{
-    if (str == NULL) return 0;
-    size_t length = 0;
-    while (str[length]) length++;
-    return length;
-}
-
-void print(const char *str)
-{
-    struct limine_terminal *terminal = terminal_request.response->terminals[0];
-    terminal_request.response->write(terminal, str, strlen(str));
-}
-
-void outb(uint16_t port, uint8_t val)
-{
-    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
-
-uint8_t inb(uint16_t port)
-{
-    uint8_t data;
-    asm volatile("inb %w1, %b0" : "=a" (data) : "Nd" (port));
-    return data;
-}
 
 struct idt_entry
 {
@@ -50,14 +19,12 @@ struct idt_entry
     uint32_t Offset3;
     uint32_t Zero;
 } __attribute__((packed));
-struct idt_entry idt[256];
 
 struct idt_ptr
 {
     uint16_t Limit;
     uint64_t Base;
 } __attribute__((packed));
-struct idt_ptr idtr;
 
 struct registers_t
 {
@@ -100,6 +67,37 @@ static const char *exception_messages[32] = {
     "Reserved",
     "Reserved",
 };
+
+static volatile struct limine_terminal_request terminal_request = {
+    .id = LIMINE_TERMINAL_REQUEST,
+    .revision = 0
+};
+
+size_t strlen(const char *str)
+{
+    size_t length = 0;
+    while (str[length])
+        length++;
+    return length;
+}
+
+void print(const char *str)
+{
+    struct limine_terminal *terminal = terminal_request.response->terminals[0];
+    terminal_request.response->write(terminal, str, strlen(str));
+}
+
+void outb(uint16_t port, uint8_t val)
+{
+    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+uint8_t inb(uint16_t port)
+{
+    uint8_t data;
+    asm volatile("inb %w1, %b0" : "=a" (data) : "Nd" (port));
+    return data;
+}
 
 #define CAPSLOCK 0x3A
 #define NUMLOCK 0x45
@@ -434,6 +432,9 @@ typedef void (*isr_t)(struct registers_t*);
 isr_t interrupt_handlers[256];
 extern void *int_table[];
 
+struct idt_entry idt[256];
+struct idt_ptr idtr;
+
 void idt_set_descriptor(uint8_t vector, void *isr)
 {
     idt[vector].Offset1 = (uint64_t)isr;
@@ -526,94 +527,139 @@ void _start(void)
 
 )";
 
-static const char *suffix = R"(
+static constexpr auto suffix = R"(
     for (;;)
         asm volatile ("hlt");
 })";
 
-static const char *kernelasm = R"(; Copyright (C) 2022  ilobilo
-
-%macro pushall 0
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-%endmacro
-
-%macro popall 0
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rbp
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-%endmacro
-
-[EXTERN int_handler]
-int_common_stub:
-    pushall
-    mov rdi, rsp
-    call int_handler
-    popall
-    add rsp, 16
-    iretq
-
-%macro isr 1
-isr_%1:
-%if !(%1 == 8 || (%1 >= 10 && %1 <= 14) || %1 == 17 || %1 == 21 || %1 == 29 || %1 == 30)
-    push 0
-%endif
-    push %1
-    jmp int_common_stub
-%endmacro
-
-%assign i 0
-%rep 256
-isr i
-%assign i i+1
-%endrep
-
-section .data
-int_table:
-%assign i 0
-%rep 256
-    dq isr_%+i
-%assign i i+1
-%endrep
-[GLOBAL int_table]
+static constexpr auto assembly = R"(// Copyright (C) 2022  ilobilo
 
 memset:
-    push rdi
-    mov rax, rsi
-    mov rcx, rdx
+    push %rdi
+    mov %rsi, %rax
+    mov %rdx, %rcx
     rep stosb
-    pop rax
+    pop %rax
     ret
-[GLOBAL memset]
+.global memset
+
+.extern int_handler
+int_common_stub:
+    push %rax
+    push %rbx
+    push %rcx
+    push %rdx
+    push %rsi
+    push %rdi
+    push %rbp
+    push %r8
+    push %r9
+    push %r10
+    push %r11
+    push %r12
+    push %r13
+    push %r14
+    push %r15
+
+    mov %rsp, %rdi
+    call int_handler
+
+    pop %r15
+    pop %r14
+    pop %r13
+    pop %r12
+    pop %r11
+    pop %r10
+    pop %r9
+    pop %r8
+    pop %rbp
+    pop %rdi
+    pop %rsi
+    pop %rdx
+    pop %rcx
+    pop %rbx
+    pop %rax
+
+    addq $16, %rsp
+    iretq
+
+.macro isr number
+    isr_\number:
+.if !(\number == 8 || (\number >= 10 && \number <= 14) || \number == 17 || \number == 21 || \number == 29 || \number == 30)
+    push $0
+.endif
+    push $\number
+    jmp int_common_stub
+.endm
+
+.altmacro
+.macro isr_insert number
+    .section .text
+    isr \number
+
+    .section .data
+    .quad isr_\number
+.endm
+
+.section .data
+int_table:
+.set i, 0
+.rept 256
+    isr_insert %i
+    .set i, i + 1
+.endr
+.global int_table
 )";
 
-static const char *ccargs = " -std=gnu17 -ffreestanding -fno-stack-protector -fno-omit-frame-pointer -fno-pic -mabi=sysv -mno-80387 -mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-red-zone -mcmodel=kernel -I. -Ilimine tmp/*.c -c -o tmp/kernel.o";
-static const char *ldargs = " -Tlinker.ld -nostdlib -zmax-page-size=0x1000 -static tmp/kernel.o tmp/kernelasm.o -o tmp/kernel.elf";
-static const char *cpargs = " tmp/kernel.elf limine.cfg limine/limine-cd.bin limine/limine-cd-efi.bin limine/limine.sys tmp/iso_root";
-static const char *xorrisoflags = " -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label tmp/iso_root -o ";
-static const char *asmargs = " -felf64 -o tmp/kernelasm.o tmp/*.asm";
+static constexpr auto linker = R"(OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_ARCH(i386:x86-64)
+
+ENTRY(_start)
+
+PHDRS
+{
+    null    PT_NULL    FLAGS(0);
+    text    PT_LOAD    FLAGS((1 << 0) | (1 << 2));
+    rodata  PT_LOAD    FLAGS((1 << 2));
+    data    PT_LOAD    FLAGS((1 << 1) | (1 << 2));
+}
+
+SECTIONS
+{
+    . = 0xffffffff80000000;
+
+    .text : {
+        *(.text .text.*)
+    } :text
+
+    . += CONSTANT(MAXPAGESIZE);
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    } :rodata
+
+    . += CONSTANT(MAXPAGESIZE);
+
+    .data : {
+        *(.data .data.*)
+    } :data
+
+    .bss : {
+        *(COMMON)
+        *(.bss .bss.*)
+    } :data
+})";
+
+static constexpr auto config = R"(TIMEOUT=5
+SERIAL=yes
+VERBOSE=yes
+
+:BrainfuckOS
+    PROTOCOL=limine
+    KERNEL_PATH=boot:///kernel.elf
+    KASLR=no
+)";
+
+static constexpr auto cflags = "-std=gnu17 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -march=x86-64 -mabi=sysv -mno-80387 -mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-red-zone -mcmodel=kernel";
+static constexpr auto ldflags = "-static -nostdlib -zmax-page-size=0x1000";
+static constexpr auto xorrisoflags = "-as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label";

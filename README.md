@@ -1,7 +1,11 @@
-# bf2os
+# Bf2os
 Boot your Brainfuck program
 
-* Run ```make``` to compile
-* Default compiler is clang++, specify custom one with CPP=MyCompiler (e.g. g++)
-* Usage: ./bf2os in.bf out.iso
-* Default OS compilers are nasm and clang and linker is ld.lld, to use gcc and ld add "gnu" flag to the command line. for example: ./bf2os in.bf out.iso gnu
+## Building and Running
+* This repository contains limine binary branch submodule. To use it, please clone this repo with --recursive flag
+* ``meson builddir``
+* ``ninja -C builddir``
+* ``./builddir/bf2os -l/--limine path input.bf output.iso``
+* Limine directory should contain files: ``limine.h``, ``limine-deploy``, ``limine-cd.bin``, ``limine-cd-efi.bin`` and ``limine.sys``
+* Default path is ``./limine``
+* You can also use custom CC, LD and XORRISO with environment variables
