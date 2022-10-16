@@ -55,9 +55,7 @@ void cleanup()
 
 bool exists(std::string command)
 {
-    if (system((command += " > /dev/null 2>&1").c_str()) != -1)
-        return true;
-    return false;
+    return system((command += " > /dev/null 2>&1").c_str()) != -1;
 }
 
 auto get_program(auto env, auto name)
