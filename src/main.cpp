@@ -47,12 +47,6 @@ bool parse_flags()
     return false;
 }
 
-fs::path tmpdir;
-void cleanup()
-{
-    fs::remove_all(tmpdir);
-};
-
 bool exists(std::string command)
 {
     return system((command += " > /dev/null 2>&1").c_str()) != -1;
@@ -68,7 +62,6 @@ auto get_program(auto env, auto name)
         return name;
 
     std::cerr << "Could not find '" << name << "'" << std::endl;
-    cleanup();
     std::exit(EXIT_FAILURE);
 }
 
@@ -164,11 +157,11 @@ auto main(int argc, char **argv) -> int
     if (mkdtemp(tmplt) == nullptr)
     {
         std::cerr << "Could not create temporary directory!" << std::endl;
-        cleanup();
+        free(tmplt);
         std::exit(EXIT_FAILURE);
     }
 
-    tmpdir = tmplt;
+    fs::path tmpdir = tmplt;
     free(tmplt);
 
     auto kernel_c = tmpdir / "kernel.c";
@@ -234,21 +227,21 @@ auto main(int argc, char **argv) -> int
     if (run(cc, cflags, "-I", limine_dir, kernel_S, "-c -o", kernel_c_o))
     {
         std::cerr << "Could not compile kernel.S!" << std::endl;
-        cleanup();
+        fs::remove_all(tmpdir);
         return EXIT_FAILURE;
     }
 
     if (run(cc, cflags, "-I", limine_dir, kernel_c, "-c -o", kernel_S_o))
     {
         std::cerr << "Could not compile kernel.c!" << std::endl;
-        cleanup();
+        fs::remove_all(tmpdir);
         return EXIT_FAILURE;
     }
 
     if (run(ld, ldflags, "-T", linker_ld, kernel_S_o, kernel_c_o, "-o", kernel_elf))
     {
         std::cerr << "Could not link the kernel!" << std::endl;
-        cleanup();
+        fs::remove_all(tmpdir);
         return EXIT_FAILURE;
     }
 
@@ -261,17 +254,17 @@ auto main(int argc, char **argv) -> int
     if (run(xorriso, xorrisoflags, iso_root, "-o", output_file))
     {
         std::cerr << "Could not create kernel iso!" << std::endl;
-        cleanup();
+        fs::remove_all(tmpdir);
         return EXIT_FAILURE;
     }
 
     if (run(limine_deploy, output_file))
     {
         std::cerr << "Could not deploy limine to kernel iso!" << std::endl;
-        cleanup();
+        fs::remove_all(tmpdir);
         return EXIT_FAILURE;
     }
 
-    cleanup();
+    fs::remove_all(tmpdir);
     return EXIT_SUCCESS;
 }
