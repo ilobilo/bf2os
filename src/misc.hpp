@@ -301,9 +301,15 @@ char c = '\0';
 
 char getchar()
 {
-    while (!pressed);
+    while (!pressed)
+        asm volatile ("nop");
     pressed = false;
     putchar(c);
+    if (c == '\b')
+    {
+        putchar(' ');
+        putchar(c);
+    }
     return c;
 }
 
